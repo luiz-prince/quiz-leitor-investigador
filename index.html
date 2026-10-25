@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Leitor Investigador</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: uma coluna estreita, como uma ficha de leitura; o trecho do texto fica num papel pautado
+   e a "pista" é marcada com marca-texto quando o aluno responde. */
+:root {
+  --paper: #f4f6fa;
+  --card: #ffffff;
+  --ink: #1a2133;
+  --muted: #5b6478;
+  --line: #d6dce8;
+  --rule: #e3e8f2;
+  --accent: #2443a6;
+  --accent-soft: #e6ebfa;
+  --marker: #ffe45c;
+  --marker-ink: #1a2133;
+  --ok: #17734a;
+  --ok-soft: #e2f3ea;
+  --bad: #b3261e;
+  --bad-soft: #fbe7e5;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --size: 1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #10141d; --card: #181e2b; --ink: #e9edf6; --muted: #a2abbe; --line: #2c3547; --rule: #232b3b;
+    --accent: #9db2ff; --accent-soft: #222d4d; --marker: #f2d544; --marker-ink: #141a26;
+    --ok: #6fd3a0; --ok-soft: #173327; --bad: #ff8f86; --bad-soft: #3a1d1c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #10141d; --card: #181e2b; --ink: #e9edf6; --muted: #a2abbe; --line: #2c3547; --rule: #232b3b;
+  --accent: #9db2ff; --accent-soft: #222d4d; --marker: #f2d544; --marker-ink: #141a26;
+  --ok: #6fd3a0; --ok-soft: #173327; --bad: #ff8f86; --bad-soft: #3a1d1c; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: calc(17px * var(--size));
+  line-height: 1.6;
+}
+.wrap {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* topo */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.eyebrow { font-size: .78em; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.tools { display: flex; gap: 8px; }
+.tool {
+  border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+  padding: 6px 14px; cursor: pointer; font-size: .85em; font-weight: 700;
+}
+.tool:hover { border-color: var(--accent); color: var(--accent); }
+.tool[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* abertura */
+.intro { display: grid; gap: 16px; }
+.intro h1 { font-size: clamp(2.2rem, 7vw, 3.4rem); font-weight: 800; letter-spacing: -.02em; }
+.intro h1 .hl { padding: 0 .12em; }
+.lede { font-size: 1.1em; color: var(--muted); max-width: 36rem; }
+.strategies { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.strategies li { font-size: .82em; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; background: var(--card); }
+.meta { font-size: .85em; color: var(--muted); }
+
+/* marca-texto */
+.hl {
+  background-image: linear-gradient(transparent 12%, var(--marker) 12%, var(--marker) 88%, transparent 88%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  color: var(--marker-ink);
+  border-radius: 3px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+mark.hl { background-color: transparent; padding: 0 .1em; animation: sweep .7s ease-out both; }
+@keyframes sweep { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
+
+/* progresso */
+.progress { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+.seg { height: 8px; border-radius: 4px; background: var(--rule); }
+.seg.current { background: var(--accent); }
+.seg.ok { background: var(--ok); }
+.seg.bad { background: var(--bad); }
+.count { display: flex; justify-content: space-between; font-size: .85em; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* questão */
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: clamp(18px, 4vw, 28px); display: grid; gap: 18px;
+}
+.chip {
+  justify-self: start; font-size: .78em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 3px 10px;
+}
+.passage {
+  margin: 0; padding: 14px 18px; border-radius: 8px; border: 1px dashed var(--line);
+  font-size: 1.05em; line-height: 1.9;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.9em - 1px), var(--rule) calc(1.9em - 1px), var(--rule) 1.9em);
+  background-position: 0 14px;
+}
+.passage .src { display: block; font-size: .78em; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+.question { font-family: var(--display); font-size: 1.3em; font-weight: 600; }
+.options { display: grid; gap: 10px; }
+.opt {
+  display: grid; grid-template-columns: 2.1em 1fr; gap: 12px; align-items: start; text-align: left;
+  background: var(--paper); border: 2px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer;
+}
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt .letter {
+  width: 2.1em; height: 2.1em; display: grid; place-items: center; border-radius: 50%;
+  border: 2px solid currentColor; font-weight: 700; font-size: .85em; color: var(--muted);
+}
+.opt:disabled { cursor: default; }
+.opt.right { border-color: var(--ok); background: var(--ok-soft); }
+.opt.right .letter { color: var(--ok); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .letter { color: var(--bad); }
+.opt.dim { opacity: .6; }
+
+.feedback { border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; border: 1px solid var(--line); }
+.feedback.ok { background: var(--ok-soft); border-color: var(--ok); }
+.feedback.bad { background: var(--bad-soft); border-color: var(--bad); }
+.feedback strong { font-family: var(--display); font-size: 1.1em; }
+.feedback.ok strong { color: var(--ok); }
+.feedback.bad strong { color: var(--bad); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.btn {
+  border: 0; border-radius: 10px; padding: 12px 22px; cursor: pointer; font-weight: 700;
+  background: var(--accent); color: var(--card);
+}
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.hint { font-size: .82em; color: var(--muted); }
+
+/* resultado */
+.score { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.score .big { font-family: var(--display); font-weight: 800; font-size: clamp(3rem, 12vw, 4.5rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.review { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.review li {
+  display: grid; grid-template-columns: 1.8em 1fr; gap: 10px; align-items: start;
+  border-bottom: 1px solid var(--rule); padding-bottom: 8px;
+}
+.mark-ok { color: var(--ok); font-weight: 700; }
+.mark-bad { color: var(--bad); font-weight: 700; }
+.review .what { font-size: .9em; color: var(--muted); }
+footer { font-size: .8em; color: var(--muted); display: grid; gap: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  mark.hl { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <span class="eyebrow">Língua Portuguesa · 9º ano</span>
+    <div class="tools">
+      <button class="tool" id="btn-size" type="button" aria-pressed="false" title="Aumentar o tamanho da letra">A+ Letra maior</button>
+      <button class="tool" id="btn-listen" type="button" title="Ouvir a questão em voz alta" hidden>🔊 Ouvir</button>
+    </div>
+  </div>
+
+  <main id="app" aria-live="polite"></main>
+
+  <footer>
+    <span>Habilidades da BNCC: EF89LP33 (leitura autônoma de contos e narrativas de suspense), EF89LP37 (efeitos de sentido da ironia) e EF69LP53 (pontuação e recursos gráficos na leitura expressiva).</span>
+    <span>Os trechos dos textos foram escritos especialmente para este quiz.</span>
+  </footer>
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    strategy: 'Antecipação',
+    passage: null,
+    question: 'Antes de começar a ler um conto chamado "O que o espelho não mostrou", qual hipótese é a mais adequada?',
+    options: [
+      'É uma narrativa de suspense ou mistério sobre algo estranho no reflexo.',
+      'É um manual que ensina a limpar espelhos.',
+      'É uma notícia sobre uma fábrica de vidros.',
+      'É uma receita de bolo.'
+    ],
+    answer: 0,
+    explain: 'Título, gênero e suporte ativam o que já sabemos e ajudam a prever o assunto. "Não mostrou" sugere algo fora do normal, típico do suspense. Durante a leitura, a hipótese é confirmada ou corrigida.'
+  },
+  {
+    strategy: 'Localizar informação',
+    passage: 'Dona Celeste trancou a porta às dez da noite, como fazia havia trinta anos. Às onze, ouviu três batidas na janela da cozinha. Às onze e meia, as batidas vieram da porta do quarto, pelo lado de dentro.',
+    evidence: 'Às onze, ouviu três batidas na janela da cozinha.',
+    question: 'Segundo o texto, a que horas Dona Celeste ouviu as primeiras batidas?',
+    options: ['Às dez da noite.', 'Às onze.', 'Às onze e meia.', 'À meia-noite.'],
+    answer: 1,
+    explain: 'A resposta está escrita no texto (informação explícita). Para encontrá-la, basta voltar ao trecho e localizar a primeira vez em que as batidas aparecem. Cuidado: às dez ela apenas trancou a porta.'
+  },
+  {
+    strategy: 'Inferência',
+    passage: 'Dona Celeste trancou a porta às dez da noite, como fazia havia trinta anos. Às onze, ouviu três batidas na janela da cozinha. Às onze e meia, as batidas vieram da porta do quarto, pelo lado de dentro.',
+    evidence: 'pelo lado de dentro',
+    question: 'O que a expressão "pelo lado de dentro" permite concluir?',
+    options: [
+      'Que a porta do quarto estava quebrada.',
+      'Que Dona Celeste estava fora de casa.',
+      'Que havia alguém, ou algo, dentro do quarto.',
+      'Que as batidas eram causadas pelo vento.'
+    ],
+    answer: 2,
+    explain: 'O texto não diz com todas as letras que havia alguém no quarto. Concluímos isso juntando a pista ("pelo lado de dentro") ao que sabemos: para bater numa porta por dentro, é preciso estar lá dentro. Isso é uma inferência.'
+  },
+  {
+    strategy: 'Palavra pelo contexto',
+    passage: 'O corredor era tão lúgubre que nem os gatos da casa ousavam atravessá-lo depois do anoitecer.',
+    evidence: 'nem os gatos da casa ousavam atravessá-lo depois do anoitecer',
+    question: 'Pelo contexto, o que significa a palavra "lúgubre"?',
+    options: ['Alegre e iluminado.', 'Estreito e comprido.', 'Limpo e organizado.', 'Sombrio e assustador.'],
+    answer: 3,
+    explain: 'Mesmo sem conhecer a palavra, o resto da frase dá a pista: se nem os gatos tinham coragem de passar por ali à noite, o corredor só pode ser sombrio e assustador. Depois, vale confirmar no dicionário.'
+  },
+  {
+    strategy: 'Ideia principal',
+    passage: 'Quando lemos uma história de suspense, o coração acelera e a respiração fica mais curta, mesmo sabendo que estamos seguros. Isso acontece porque o cérebro reage às cenas imaginadas de um jeito parecido com o que faria diante de uma situação real. Por isso, ler suspense pode ser uma forma segura de sentir medo.',
+    evidence: 'Por isso, ler suspense pode ser uma forma segura de sentir medo.',
+    question: 'Qual é a ideia principal do parágrafo?',
+    options: [
+      'Ler suspense provoca reações reais no corpo, mas é um jeito seguro de sentir medo.',
+      'Sentir medo durante a leitura faz mal à saúde.',
+      'Adolescentes não deveriam ler histórias de suspense.',
+      'O cérebro nunca diferencia a imaginação da realidade.'
+    ],
+    answer: 0,
+    explain: 'A ideia principal resume o parágrafo inteiro, e não só um detalhe. Aqui ela aparece na conclusão, introduzida por "Por isso". As outras alternativas exageram ou dizem o que o texto não diz.'
+  },
+  {
+    strategy: 'Leitura de varredura',
+    passage: null,
+    question: 'Você precisa achar depressa, no sumário de um livro de contos, a página do conto "A casa do fim da rua". Qual estratégia é a mais adequada?',
+    options: [
+      'Ler o livro inteiro desde a primeira página.',
+      'Passar os olhos pelo sumário procurando apenas esse título.',
+      'Ler com atenção o primeiro e o último conto.',
+      'Fazer um resumo de todos os contos do livro.'
+    ],
+    answer: 1,
+    explain: 'Quando o objetivo é encontrar uma informação específica, fazemos uma leitura de varredura (em inglês, scanning): os olhos procuram só o que interessa. Ler com estratégia é escolher o modo de ler conforme o objetivo.'
+  },
+  {
+    strategy: 'Ironia',
+    passage: 'Depois de perder o ônibus, pisar numa poça e lembrar que tinha esquecido o trabalho em casa, Lucas suspirou: "Que dia maravilhoso!"',
+    evidence: '"Que dia maravilhoso!"',
+    question: 'Que efeito de sentido a fala de Lucas produz?',
+    options: [
+      'Mostra que Lucas está muito feliz com o dia.',
+      'Mostra que Lucas não percebeu o que aconteceu.',
+      'É uma ironia: ele diz o contrário do que sente para mostrar frustração.',
+      'É uma comparação entre dois dias diferentes.'
+    ],
+    answer: 2,
+    explain: 'Tudo deu errado para Lucas, então "maravilhoso" não pode ser dito a sério. A ironia diz o contrário do que se pensa, e o leitor percebe isso comparando a fala com a situação.'
+  },
+  {
+    strategy: 'Narrador',
+    passage: 'Eu juro que não fui eu. Eu nem estava em casa quando o vaso caiu... bem, talvez eu estivesse na sala. Mas só por um minuto.',
+    evidence: 'bem, talvez eu estivesse na sala',
+    question: 'Qual pista mostra que não dá para confiar totalmente nesse narrador?',
+    options: [
+      'Ele conta a história em primeira pessoa.',
+      'Ele se contradiz no meio da própria fala.',
+      'O texto fala de um vaso.',
+      'O trecho é curto.'
+    ],
+    answer: 1,
+    explain: 'Primeiro ele diz que "nem estava em casa"; logo depois admite que "talvez" estivesse na sala. Essa contradição é a pista de um narrador que esconde ou distorce os fatos. O leitor atento desconfia e procura outras pistas.'
+  },
+  {
+    strategy: 'Pontuação e destaque',
+    passage: 'Ele girou a maçaneta devagar, empurrou a porta... e VIU.',
+    evidence: '... e VIU.',
+    question: 'Que efeito as reticências e a palavra em letras maiúsculas criam no trecho?',
+    options: [
+      'Mostram que houve um erro de digitação.',
+      'Indicam que o personagem está cantando.',
+      'Mostram que o texto é uma notícia.',
+      'Criam suspense com uma pausa e dão ênfase ao momento decisivo.'
+    ],
+    answer: 3,
+    explain: 'As reticências fazem o leitor parar e esperar; a caixa-alta destaca a palavra mais importante. Ao ler em voz alta, essas marcas pedem pausa e mudança de entonação, um recurso muito usado no suspense.'
+  },
+  {
+    strategy: 'Rever hipóteses',
+    passage: null,
+    question: 'Durante a leitura de um conto de mistério, você desconfiou do jardineiro. No final, o culpado era outro personagem. O que faz um leitor estratégico?',
+    options: [
+      'Volta às pistas do texto para entender o que levou ao desfecho.',
+      'Desiste do livro, porque errou o palpite.',
+      'Conclui que o autor errou ao escrever o final.',
+      'Ignora o final e fica com a própria versão.'
+    ],
+    answer: 0,
+    explain: 'Hipóteses servem para ser testadas. Quando o texto contraria o que você imaginou, vale voltar às pistas e perceber como o autor construiu a surpresa. Isso se chama monitorar a própria compreensão.'
+  }
+];
+
+const LETTERS = ['A', 'B', 'C', 'D'];
+const app = document.getElementById('app');
+const btnListen = document.getElementById('btn-listen');
+const btnSize = document.getElementById('btn-size');
+
+let state = { index: -1, answers: [] }; // index -1 = tela inicial; QUESTIONS.length = resultado
+
+function esc(s) {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function passageHTML(q, revealed) {
+  if (!q.passage) return '';
+  let body = esc(q.passage);
+  if (revealed && q.evidence) {
+    const ev = esc(q.evidence);
+    body = body.replace(ev, '<mark class="hl">' + ev + '</mark>');
+  }
+  return '<blockquote class="passage">' + body + '<span class="src">Trecho escrito para este quiz.</span></blockquote>';
+}
+
+function progressHTML() {
+  return '<div class="progress" aria-hidden="true">' + QUESTIONS.map((_, i) => {
+    const a = state.answers[i];
+    let cls = 'seg';
+    if (a !== undefined) cls += a === QUESTIONS[i].answer ? ' ok' : ' bad';
+    else if (i === state.index) cls += ' current';
+    return '<span class="' + cls + '"></span>';
+  }).join('') + '</div>';
+}
+
+function renderIntro() {
+  btnListen.hidden = true;
+  const strategies = [...new Set(QUESTIONS.map(q => q.strategy))];
+  app.innerHTML =
+    '<section class="intro">' +
+      '<h1>Leitor <span class="hl">Investigador</span></h1>' +
+      '<p class="lede">Dez desafios para treinar as estratégias que bons leitores usam: prever, procurar pistas, deduzir o que não está escrito e conferir as próprias hipóteses.</p>' +
+      '<ul class="strategies">' + strategies.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul>' +
+      '<p class="meta">10 questões · cerca de 10 minutos · depois de cada resposta, a pista aparece marcada no texto.</p>' +
+      '<div class="actions"><button class="btn" id="btn-start" type="button">Começar o quiz</button></div>' +
+    '</section>';
+  document.getElementById('btn-start').addEventListener('click', () => go(0));
+}
+
+function renderQuestion() {
+  const q = QUESTIONS[state.index];
+  const chosen = state.answers[state.index];
+  const answered = chosen !== undefined;
+  btnListen.hidden = !('speechSynthesis' in window);
+
+  const opts = q.options.map((text, i) => {
+    let cls = 'opt';
+    if (answered) {
+      if (i === q.answer) cls += ' right';
+      else if (i === chosen) cls += ' wrong';
+      else cls += ' dim';
+    }
+    return '<button class="' + cls + '" type="button" data-i="' + i + '"' + (answered ? ' disabled' : '') + '>' +
+      '<span class="letter">' + LETTERS[i] + '</span><span>' + esc(text) + '</span></button>';
+  }).join('');
+
+  let feedback = '';
+  if (answered) {
+    const ok = chosen === q.answer;
+    feedback = '<div class="feedback ' + (ok ? 'ok' : 'bad') + '" role="status">' +
+      '<strong>' + (ok ? 'Acertou!' : 'Ainda não. A resposta certa é a ' + LETTERS[q.answer] + '.') + '</strong>' +
+      '<p>' + esc(q.explain) + '</p></div>';
+  }
+
+  const last = state.index === QUESTIONS.length - 1;
+  app.innerHTML =
+    '<div class="count"><span>Questão ' + (state.index + 1) + ' de ' + QUESTIONS.length + '</span><span>' + score() + ' acerto' + (score() === 1 ? '' : 's') + '</span></div>' +
+    progressHTML() +
+    '<article class="card">' +
+      '<span class="chip">' + esc(q.strategy) + '</span>' +
+      passageHTML(q, answered) +
+      '<h2 class="question">' + esc(q.question) + '</h2>' +
+      '<div class="options">' + opts + '</div>' +
+      feedback +
+      '<div class="actions">' +
+        (answered
+          ? '<button class="btn" id="btn-next" type="button">' + (last ? 'Ver meu resultado' : 'Próxima questão') + '</button>'
+          : '<span class="hint">Dica: você também pode responder apertando A, B, C ou D no teclado.</span>') +
+      '</div>' +
+    '</article>';
+
+  app.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => choose(+b.dataset.i)));
+  const next = document.getElementById('btn-next');
+  if (next) { next.addEventListener('click', () => go(state.index + 1)); next.focus(); }
+}
+
+function renderResult() {
+  btnListen.hidden = true;
+  const total = score();
+  let msg = 'Continue praticando: releia os textos procurando as pistas antes de responder.';
+  if (total >= 9) msg = 'Excelente! Você já usa as estratégias como um verdadeiro leitor investigador.';
+  else if (total >= 7) msg = 'Muito bom! Revise as estratégias marcadas em vermelho para ficar ainda melhor.';
+  else if (total >= 5) msg = 'Bom começo. Veja abaixo quais estratégias merecem mais treino.';
+
+  app.innerHTML =
+    '<article class="card">' +
+      '<span class="chip">Resultado</span>' +
+      '<div class="score"><span class="big">' + total + '/' + QUESTIONS.length + '</span><span>acertos</span></div>' +
+      '<p>' + msg + '</p>' +
+      '<ul class="review">' + QUESTIONS.map((q, i) => {
+        const ok = state.answers[i] === q.answer;
+        return '<li><span class="' + (ok ? 'mark-ok' : 'mark-bad') + '" aria-label="' + (ok ? 'acertou' : 'errou') + '">' + (ok ? '✓' : '✗') + '</span>' +
+          '<span><strong>' + esc(q.strategy) + '</strong><br><span class="what">' + esc(q.question) + '</span></span></li>';
+      }).join('') + '</ul>' +
+      '<div class="actions"><button class="btn" id="btn-again" type="button">Fazer de novo</button></div>' +
+    '</article>';
+  document.getElementById('btn-again').addEventListener('click', () => { state.answers = []; go(0); });
+}
+
+function score() {
+  return state.answers.reduce((n, a, i) => n + (a === QUESTIONS[i].answer ? 1 : 0), 0);
+}
+
+function choose(i) {
+  if (state.answers[state.index] !== undefined) return;
+  state.answers[state.index] = i;
+  stopSpeech();
+  render();
+}
+
+function go(i) {
+  state.index = i;
+  stopSpeech();
+  render();
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+
+function render() {
+  if (state.index < 0) renderIntro();
+  else if (state.index >= QUESTIONS.length) renderResult();
+  else renderQuestion();
+}
+
+// teclado: A-D ou 1-4 respondem; Enter avança
+document.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (state.index < 0 || state.index >= QUESTIONS.length) return;
+  const k = e.key.toLowerCase();
+  const map = { a: 0, b: 1, c: 2, d: 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+  if (k in map && state.answers[state.index] === undefined) { e.preventDefault(); choose(map[k]); }
+});
+
+// leitura em voz alta (para quem prefere ouvir ou tem dificuldade de leitura)
+function stopSpeech() {
+  try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
+}
+btnListen.addEventListener('click', () => {
+  const q = QUESTIONS[state.index];
+  if (!q) return;
+  try {
+    stopSpeech();
+    const parts = [];
+    if (q.passage) parts.push('Leia o trecho. ' + q.passage);
+    parts.push(q.question);
+    q.options.forEach((o, i) => parts.push('Alternativa ' + LETTERS[i] + '. ' + o));
+    const u = new SpeechSynthesisUtterance(parts.join(' '));
+    u.lang = 'pt-BR';
+    u.rate = 0.95;
+    const voice = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    if (voice) u.voice = voice;
+    window.speechSynthesis.speak(u);
+  } catch (e) { btnListen.hidden = true; }
+});
+
+// letra maior (lembrada só neste navegador)
+function applySize(big) {
+  document.documentElement.style.setProperty('--size', big ? '1.18' : '1');
+  btnSize.setAttribute('aria-pressed', big ? 'true' : 'false');
+}
+let big = false;
+try { big = localStorage.getItem('leitor-letra') === 'grande'; } catch (e) {}
+applySize(big);
+btnSize.addEventListener('click', () => {
+  big = !big;
+  applySize(big);
+  try { localStorage.setItem('leitor-letra', big ? 'grande' : 'normal'); } catch (e) {}
+});
+
+render();
+</script>
+</body>
+</html>
